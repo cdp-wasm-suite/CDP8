@@ -45,5 +45,9 @@ add_subdirectory(tabedit)
 add_subdirectory(texture)
 add_subdirectory(standnew)
 add_subdirectory(science)
-add_subdirectory(externals)
+# externals/ holds self-contained extras (portsf, reverb, fastconv, mctools)
+# with their own quirks; skip them for the WebAssembly target for now.
+if(NOT EMSCRIPTEN)
+    add_subdirectory(externals)
+endif()
 
