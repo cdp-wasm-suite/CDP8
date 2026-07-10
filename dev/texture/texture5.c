@@ -499,7 +499,7 @@ int add_samples_to_outbuf_from_inbuf
             hereval = 0.0;
 /* <--SAFETY */
 
-        if(splicpos >= 0)
+        else if(splicpos >= 0)
             hereval *= splicebuf[splicpos >> 1];
         splicpos += STEREO;
         outval =(float)( *lbuf + (hereval * sndout->lgain ));
@@ -551,7 +551,7 @@ int add_stereo_samples_to_outbuf_from_inbuf
             chanval2 = 0.0;
         }
     /* <--SAFETY */
-        if(splicpos >= 0) {
+        else if(splicpos >= 0) {
             chanval1 *= splicebuf[splicpos >> 1];
             chanval2 *= splicebuf[splicpos >> 1];
         }
