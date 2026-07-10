@@ -1,0 +1,130 @@
+# Continuous integration for the CDP suite.
+#
+# On every push and pull request this builds all of the programs from source
+# on Linux and macOS, runs a short smoke test (synthesis, a time-domain
+# process, and a pvoc analysis/resynthesis round trip), and uploads the
+# resulting binaries as downloadable artifacts.
+#
+# GitHub runs this automatically on its own machines — nothing to install or
+# host. Each commit and PR gets a green tick or a red cross, so build breaks
+# on either platform are caught the moment they land rather than at release
+# time. Artifacts let anyone try the freshly built programs without a local
+# toolchain.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:   # allows manual runs from the Actions tab
+
+jobs:
+  build:
+    name: Build & smoke test (${{ matrix.os }}, ${{ matrix.cc }})
+    strategy:
+      # If one configuration fails, still finish the others so a single run
+      # reports the full picture.
+      fail-fast: false
+      # Linux is built with both GCC and Clang (both preinstalled on the
+      # runners), so compiler-specific breakage — like a flag only one of
+      # them accepts — shows up here instead of on a user's machine.
+      matrix:
+        include:
+          - { os: ubuntu-latest, cc: gcc,   cxx: g++     }
+          - { os: ubuntu-latest, cc: clang, cxx: clang++ }
+          - { os: macos-latest,  cc: clang, cxx: clang++ }
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # ccache keeps compiled objects between runs (stored with actions/cache,
+      # keyed per OS + compiler), so unchanged sources aren't recompiled —
+      # a warm build takes seconds instead of a minute.
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.os }}-${{ matrix.cc }}
+
+      # cmake and the compilers are preinstalled on all GitHub runners.
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      # Not a test suite, but enough to prove the built programs run and
+      # produce sound: synthesise 2 s of 440 Hz sine, transpose it down an
+      # octave, then do a pvoc analysis/resynthesis round trip.
+      - name: Smoke test
+        run: |
+          set -ex
+          cd NewRelease
+          ./synth wave 1 test.wav 44100 1 2.0 440
+          ./modify speed 2 test.wav shifted.wav -12
+          ./pvoc anal 1 test.wav test.ana
+          ./pvoc synth test.ana resynth.wav
+          ls -l test.wav shifted.wav resynth.wav
+          rm -f test.wav shifted.wav test.ana resynth.wav
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdp-programs-${{ matrix.os }}-${{ matrix.cc }}
+          path: NewRelease/
+          retention-days: 14
+
+  # Windows builds via MSYS2's MinGW-w64 toolchains — the modern equivalent
+  # of the MinGW/Msys setup building.txt describes, covering both x86_64 and
+  # (on the free windows-11-arm runner) native arm64.
+  build-windows:
+    name: Build & smoke test (${{ matrix.os }}, ${{ matrix.msystem }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, msystem: MINGW64 }     # x86_64, GCC
+          - { os: windows-11-arm, msystem: CLANGARM64 }  # arm64, Clang
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: false
+          # pacboy resolves the right package prefix for the chosen msystem
+          pacboy: toolchain:p cmake:p ninja:p
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      - name: Smoke test
+        run: |
+          set -ex
+          cd NewRelease
+          ./synth wave 1 test.wav 44100 1 2.0 440
+          ./modify speed 2 test.wav shifted.wav -12
+          ./pvoc anal 1 test.wav test.ana
+          ./pvoc synth test.ana resynth.wav
+          ls -l test.wav shifted.wav resynth.wav
+          rm -f test.wav shifted.wav test.ana resynth.wav
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdp-programs-${{ matrix.os }}-${{ matrix.msystem }}
+          path: NewRelease/
+          retention-days: 14
