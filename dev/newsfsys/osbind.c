@@ -58,12 +58,19 @@
 
 #ifdef unix
 #include <string.h>
+#ifndef __wasi__
 #include <sys/param.h>
 #include <sys/mount.h>
 #endif
+#endif
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 4096   /* sys/param.h value; wasi-libc has no sys/param.h */
+#endif
 #ifdef linux
 #include <stdint.h>
+#ifndef __wasi__
 #include <sys/vfs.h>
+#endif
 #endif
 
 /*RWD May 2005: has to be a signed value sadly!*/
@@ -224,6 +231,10 @@ hz1000(void)
 unsigned int
 getdrivefreespace(const char *path)
 {
+#ifdef __wasi__
+    /* WASI has no statfs; report the BIGFILESIZE cap (as on a roomy disk). */
+    return (unsigned int) BIGFILESIZE;
+#else
     int ret;
     uint64_t avail = 0; /*RWD Jan 2014 */
     struct statfs diskstat = {0};
@@ -234,8 +245,9 @@ getdrivefreespace(const char *path)
             avail = BIGFILESIZE;
         else
             avail = diskstat.f_bsize * diskstat.f_bfree;
-    }   
+    }
     return (unsigned int) avail;
+#endif
 }
 
 int
