@@ -885,8 +885,11 @@ int apply_brkpnt_envelope(dataptr dz)
     strcpy(outfilename,dz->wordstor[0]);
     if(sloom)
         insert_new_number_at_filename_end(outfilename,0,1);
-    else
-        outfilename[strlen(outfilename) -9] = ENDOFSTR;
+    /* else: wordstor[0] is the user's requested outfile name, still unused —
+       the channel temps live at the "_cdptempN" names (dz->outfilename).
+       The old `outfilename[strlen(outfilename)-9] = ENDOFSTR` tried to strip
+       the 9-char "_cdptemp1" suffix but was applied to the unsuffixed
+       wordstor[0], mangling the name. */
 
     sampout_cnt = dz->total_samps_written;
     if((exit_status = create_sized_outfile(outfilename,dz))<0) {
