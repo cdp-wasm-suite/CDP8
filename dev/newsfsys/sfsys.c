@@ -281,7 +281,9 @@ extern int sampsize[];
 
 
 //#ifdef linux
-#ifdef __GLIBC__
+#if defined(__EMSCRIPTEN__)
+#define POS64(x) (x.__lldata)
+#elif defined(__GLIBC__)
 #define POS64(x) (x.__pos)
 #else
 #define POS64(x) (x)

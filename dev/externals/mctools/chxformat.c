@@ -42,7 +42,9 @@ char* guidnames[] = {"PCM","PCM FLOAT","AMB PCM","AMB FLOAT"};
 #define TAG(a,b,c,d)    ( ((a)<<24) | ((b)<<16) | ((c)<<8) | (d) )
 
 //#ifdef linux
-#ifdef __GLIBC__
+#if defined(__EMSCRIPTEN__)
+#define POS64(x) (x.__lldata)
+#elif defined(__GLIBC__)
 #define POS64(x) (x.__pos)
 #else
 #define POS64(x) (x)
