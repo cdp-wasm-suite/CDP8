@@ -1,0 +1,135 @@
+# Build release binaries for every supported platform and attach them to a
+# GitHub Release whenever a version tag (v*) is pushed:
+#
+#   git tag v8.7.3 && git push origin v8.7.3
+#
+# This replaces committing prebuilt zips into the repository (BinUpdates/):
+# binaries stop bloating the git history permanently, every release is built
+# reproducibly from the exact tagged source by GitHub's own machines, and
+# users download from the repo's Releases page instead of digging through the
+# tree. It also covers platforms that are awkward to build by hand — the
+# macOS job cross-compiles a universal ("fat") binary that runs natively on
+# both Intel and Apple Silicon, Linux gets native x86_64 and arm64 builds,
+# and Windows gets native x86_64 and arm64 builds via MinGW-w64.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # needed to create the release and upload assets
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # All free GitHub-hosted runners; ubuntu-24.04-arm is the Arm-native
+        # Linux runner (free for public repositories). Windows builds live in
+        # the build-windows job below (different shell + packaging format).
+        include:
+          - { os: ubuntu-latest,    name: linux-x86_64,   cmake_args: '' }
+          - { os: ubuntu-24.04-arm, name: linux-arm64,    cmake_args: '' }
+          # One macOS job builds both architectures into universal binaries —
+          # no separate Intel and Apple Silicon jobs or downloads needed.
+          - { os: macos-latest,     name: macos-universal, cmake_args: '-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"' }
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      # Prove the binaries we are about to ship actually run and produce
+      # sound before they go anywhere near the release.
+      - name: Smoke test
+        run: |
+          set -ex
+          cd NewRelease
+          ./synth wave 1 test.wav 44100 1 2.0 440
+          ./pvoc anal 1 test.wav test.ana
+          ./pvoc synth test.ana resynth.wav
+          rm -f test.wav test.ana resynth.wav
+
+      - name: Package
+        run: tar czf cdp-${{ github.ref_name }}-${{ matrix.name }}.tar.gz -C NewRelease .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cdp-${{ matrix.name }}
+          path: cdp-*.tar.gz
+
+  build-windows:
+    name: Build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, msystem: MINGW64,    name: windows-x86_64 }
+          - { os: windows-11-arm, msystem: CLANGARM64, name: windows-arm64  }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: false
+          install: zip
+          pacboy: toolchain:p cmake:p ninja:p
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      - name: Smoke test
+        run: |
+          set -ex
+          cd NewRelease
+          ./synth wave 1 test.wav 44100 1 2.0 440
+          ./pvoc anal 1 test.wav test.ana
+          ./pvoc synth test.ana resynth.wav
+          rm -f test.wav test.ana resynth.wav
+
+      # zip is the conventional archive format for Windows users
+      - name: Package
+        run: cd NewRelease && zip -q -r ../cdp-${{ github.ref_name }}-${{ matrix.name }}.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cdp-${{ matrix.name }}
+          path: cdp-*.zip
+
+  release:
+    name: Create GitHub Release
+    needs: [build, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      # gh is preinstalled on the runners; GITHUB_TOKEN is provided by
+      # Actions, so there is nothing to configure or store.
+      - name: Create release and attach binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ github.ref_name }}"
+          --repo "${{ github.repository }}"
+          --title "CDP ${{ github.ref_name }}"
+          --generate-notes
+          dist/*.tar.gz dist/*.zip
