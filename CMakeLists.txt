@@ -12,7 +12,15 @@ endif()
 message(STATUS "${CMAKE_HOME_DIRECTORY}")
 message(STATUS "installing to ${CMAKE_INSTALL_PREFIX}")
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -std=c++11 -stdlib=libc++")
+# -stdlib=libc++ is a Clang-only flag: GCC errors out on it, so a
+# -DCMAKE_BUILD_TYPE=Release build fails on Linux as soon as a C++ source is
+# compiled. Restrict it to Apple, matching the if(APPLE) guards the externals'
+# own CMakeLists.txt files already use.
+if(APPLE)
+  set(CMAKE_CXX_FLAGS_RELEASE "-O2 -std=c++11 -stdlib=libc++")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE "-O2 -std=c++11")
+endif()
 set(CMAKE_C_FLAGS_RELEASE "-O2 ")
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 
