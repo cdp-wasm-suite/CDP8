@@ -91,7 +91,7 @@ int strnicmp(const char *a, const char *b, const int length);
 #endif
 
 //#ifdef linux
-#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) || defined(__wasi__)
 #define POS64(x) (x.__lldata)
 #elif defined(__GLIBC__)
 #define POS64(x) (x.__pos)
