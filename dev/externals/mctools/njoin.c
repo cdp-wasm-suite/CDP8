@@ -32,6 +32,9 @@
 #include <assert.h>
 #ifdef unix
 #include <glob.h>
+#ifndef GLOB_TILDE
+#define GLOB_TILDE 0  /* extension missing from wasi-libc; no home dirs in the sandbox anyway */
+#endif
 #endif
 #include "portsf.h"
 

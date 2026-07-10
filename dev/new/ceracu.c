@@ -42,7 +42,9 @@
 #include <ctype.h>
 #ifdef linux
 #include <stdint.h>
+#ifndef __wasi__
 #include <sys/vfs.h>
+#endif
 #endif
 #include <sfsys.h>
 #include <string.h>
