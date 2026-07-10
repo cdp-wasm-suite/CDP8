@@ -229,7 +229,7 @@ typedef unsigned long DWORD;
 # define MSBFIRST        (1)
 # define LSBFIRST        (1)
 /*RWD May 2007:  revise defines to recognise both forms of MAC (__PPC__) */
-# if defined(__I86__) || defined(_X86_) || defined(__i386__) || defined(__i486__) || defined(_IBMR2) || defined(__LITTLE_ENDIAN__)
+# if defined(__I86__) || defined(_X86_) || defined(__i386__) || defined(__i486__) || defined(_IBMR2) || defined(__LITTLE_ENDIAN__) || defined(__aarch64__) || defined(_M_ARM64)
 #  undef MSBFIRST
 # elif defined(M68000) || defined(__sgi) || defined (__ppc__) || defined(__BIG_ENDIAN__)
 #  undef LSBFIRST
