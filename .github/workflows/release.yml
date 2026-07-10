@@ -1,7 +1,11 @@
 # Build release binaries for every supported platform and attach them to a
 # GitHub Release whenever a version tag (v*) is pushed:
 #
-#   git tag v8.7.3 && git push origin v8.7.3
+#   git tag -a v8.7.3 -m "release notes for this version..."
+#   git push origin v8.7.3
+#
+# The annotated tag's message becomes the release notes, so the changelog is
+# written once, at tagging time, and travels with the tag in git itself.
 #
 # This replaces committing prebuilt zips into the repository (BinUpdates/):
 # binaries stop bloating the git history permanently, every release is built
@@ -131,5 +135,5 @@ jobs:
           gh release create "${{ github.ref_name }}"
           --repo "${{ github.repository }}"
           --title "CDP ${{ github.ref_name }}"
-          --generate-notes
+          --notes-from-tag
           dist/*.tar.gz dist/*.zip
