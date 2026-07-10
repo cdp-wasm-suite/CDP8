@@ -78,3 +78,53 @@ jobs:
           name: cdp-programs-${{ matrix.os }}-${{ matrix.cc }}
           path: NewRelease/
           retention-days: 14
+
+  # Windows builds via MSYS2's MinGW-w64 toolchains — the modern equivalent
+  # of the MinGW/Msys setup building.txt describes, covering both x86_64 and
+  # (on the free windows-11-arm runner) native arm64.
+  build-windows:
+    name: Build & smoke test (${{ matrix.os }}, ${{ matrix.msystem }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, msystem: MINGW64 }     # x86_64, GCC
+          - { os: windows-11-arm, msystem: CLANGARM64 }  # arm64, Clang
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: false
+          # pacboy resolves the right package prefix for the chosen msystem
+          pacboy: toolchain:p cmake:p ninja:p
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      - name: Smoke test
+        run: |
+          set -ex
+          cd NewRelease
+          ./synth wave 1 test.wav 44100 1 2.0 440
+          ./modify speed 2 test.wav shifted.wav -12
+          ./pvoc anal 1 test.wav test.ana
+          ./pvoc synth test.ana resynth.wav
+          ls -l test.wav shifted.wav resynth.wav
+          rm -f test.wav shifted.wav test.ana resynth.wav
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdp-programs-${{ matrix.os }}-${{ matrix.msystem }}
+          path: NewRelease/
+          retention-days: 14
