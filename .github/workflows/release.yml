@@ -121,6 +121,13 @@ jobs:
     needs: [build, build-windows]
     runs-on: ubuntu-latest
     steps:
+      # --notes-from-tag reads the annotation from a local checkout, and
+      # actions/checkout peels annotated tags to plain commits
+      # (actions/checkout#290), so re-fetch the real tag object.
+      - uses: actions/checkout@v5
+      - name: Fetch the annotated tag
+        run: git fetch --force origin "refs/tags/${{ github.ref_name }}:refs/tags/${{ github.ref_name }}"
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -133,7 +140,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "${{ github.ref_name }}"
-          --repo "${{ github.repository }}"
           --title "CDP ${{ github.ref_name }}"
           --notes-from-tag
           dist/*.tar.gz dist/*.zip
