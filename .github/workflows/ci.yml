@@ -1,0 +1,60 @@
+# Continuous integration for the CDP suite.
+#
+# On every push and pull request this builds all of the programs from source
+# on Linux and macOS, runs a short smoke test (synthesis, a time-domain
+# process, and a pvoc analysis/resynthesis round trip), and uploads the
+# resulting binaries as downloadable artifacts.
+#
+# GitHub runs this automatically on its own machines — nothing to install or
+# host. Each commit and PR gets a green tick or a red cross, so build breaks
+# on either platform are caught the moment they land rather than at release
+# time. Artifacts let anyone try the freshly built programs without a local
+# toolchain.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:   # allows manual runs from the Actions tab
+
+jobs:
+  build:
+    name: Build & smoke test (${{ matrix.os }})
+    strategy:
+      # If one platform fails, still finish the other so a single run
+      # reports the full picture.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # cmake and a C compiler are preinstalled on all GitHub runners.
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      # Not a test suite, but enough to prove the built programs run and
+      # produce sound: synthesise 2 s of 440 Hz sine, transpose it down an
+      # octave, then do a pvoc analysis/resynthesis round trip.
+      - name: Smoke test
+        run: |
+          set -ex
+          cd NewRelease
+          ./synth wave 1 test.wav 44100 1 2.0 440
+          ./modify speed 2 test.wav shifted.wav -12
+          ./pvoc anal 1 test.wav test.ana
+          ./pvoc synth test.ana resynth.wav
+          ls -l test.wav shifted.wav resynth.wav
+          rm -f test.wav shifted.wav test.ana resynth.wav
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdp-programs-${{ matrix.os }}
+          path: NewRelease/
+          retention-days: 14
