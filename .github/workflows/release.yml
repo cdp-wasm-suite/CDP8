@@ -9,7 +9,8 @@
 # users download from the repo's Releases page instead of digging through the
 # tree. It also covers platforms that are awkward to build by hand — the
 # macOS job cross-compiles a universal ("fat") binary that runs natively on
-# both Intel and Apple Silicon, and Linux gets native x86_64 and arm64 builds.
+# both Intel and Apple Silicon, Linux gets native x86_64 and arm64 builds,
+# and Windows gets native x86_64 and arm64 builds via MinGW-w64.
 name: Release
 
 on:
@@ -26,8 +27,8 @@ jobs:
       fail-fast: false
       matrix:
         # All free GitHub-hosted runners; ubuntu-24.04-arm is the Arm-native
-        # Linux runner (free for public repositories). A Windows (MinGW) job
-        # could be added here the same way once that build is CMake-clean.
+        # Linux runner (free for public repositories). Windows builds live in
+        # the build-windows job below (different shell + packaging format).
         include:
           - { os: ubuntu-latest,    name: linux-x86_64,   cmake_args: '' }
           - { os: ubuntu-24.04-arm, name: linux-arm64,    cmake_args: '' }
@@ -64,9 +65,56 @@ jobs:
           name: cdp-${{ matrix.name }}
           path: cdp-*.tar.gz
 
+  build-windows:
+    name: Build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, msystem: MINGW64,    name: windows-x86_64 }
+          - { os: windows-11-arm, msystem: CLANGARM64, name: windows-arm64  }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: false
+          install: zip
+          pacboy: toolchain:p cmake:p ninja:p
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      - name: Smoke test
+        run: |
+          set -ex
+          cd NewRelease
+          ./synth wave 1 test.wav 44100 1 2.0 440
+          ./pvoc anal 1 test.wav test.ana
+          ./pvoc synth test.ana resynth.wav
+          rm -f test.wav test.ana resynth.wav
+
+      # zip is the conventional archive format for Windows users
+      - name: Package
+        run: cd NewRelease && zip -q -r ../cdp-${{ github.ref_name }}-${{ matrix.name }}.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cdp-${{ matrix.name }}
+          path: cdp-*.zip
+
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [build, build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -84,4 +132,4 @@ jobs:
           --repo "${{ github.repository }}"
           --title "CDP ${{ github.ref_name }}"
           --generate-notes
-          dist/*.tar.gz
+          dist/*.tar.gz dist/*.zip
