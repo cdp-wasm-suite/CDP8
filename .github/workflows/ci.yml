@@ -19,19 +19,28 @@ on:
 
 jobs:
   build:
-    name: Build & smoke test (${{ matrix.os }})
+    name: Build & smoke test (${{ matrix.os }}, ${{ matrix.cc }})
     strategy:
-      # If one platform fails, still finish the other so a single run
+      # If one configuration fails, still finish the others so a single run
       # reports the full picture.
       fail-fast: false
+      # Linux is built with both GCC and Clang (both preinstalled on the
+      # runners), so compiler-specific breakage — like a flag only one of
+      # them accepts — shows up here instead of on a user's machine.
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - { os: ubuntu-latest, cc: gcc,   cxx: g++     }
+          - { os: ubuntu-latest, cc: clang, cxx: clang++ }
+          - { os: macos-latest,  cc: clang, cxx: clang++ }
     runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
 
     steps:
       - uses: actions/checkout@v5
 
-      # cmake and a C compiler are preinstalled on all GitHub runners.
+      # cmake and the compilers are preinstalled on all GitHub runners.
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
@@ -55,6 +64,6 @@ jobs:
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
-          name: cdp-programs-${{ matrix.os }}
+          name: cdp-programs-${{ matrix.os }}-${{ matrix.cc }}
           path: NewRelease/
           retention-days: 14
