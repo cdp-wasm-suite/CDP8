@@ -61,8 +61,9 @@ jobs:
           ./pvoc synth test.ana resynth.wav
           rm -f test.wav test.ana resynth.wav
 
+      # Versioned folder containing bin/, README.txt and the LICENSE
       - name: Package
-        run: tar czf cdp-${{ github.ref_name }}-${{ matrix.name }}.tar.gz -C NewRelease .
+        run: bash .github/package-release.sh "${{ github.ref_name }}" "${{ matrix.name }}" tar
 
       - uses: actions/upload-artifact@v4
         with:
@@ -107,9 +108,10 @@ jobs:
           ./pvoc synth test.ana resynth.wav
           rm -f test.wav test.ana resynth.wav
 
-      # zip is the conventional archive format for Windows users
+      # Same layout as the unix packages; zip is the conventional archive
+      # format for Windows users
       - name: Package
-        run: cd NewRelease && zip -q -r ../cdp-${{ github.ref_name }}-${{ matrix.name }}.zip .
+        run: bash .github/package-release.sh "${{ github.ref_name }}" "${{ matrix.name }}" zip
 
       - uses: actions/upload-artifact@v4
         with:
