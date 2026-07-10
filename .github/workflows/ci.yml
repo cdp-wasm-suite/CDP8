@@ -40,9 +40,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # ccache keeps compiled objects between runs (stored with actions/cache,
+      # keyed per OS + compiler), so unchanged sources aren't recompiled —
+      # a warm build takes seconds instead of a minute.
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.os }}-${{ matrix.cc }}
+
       # cmake and the compilers are preinstalled on all GitHub runners.
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
         run: cmake --build build -j 4
