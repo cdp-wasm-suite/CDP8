@@ -1116,9 +1116,9 @@ int usage2(char *str)
     if(!strcmp(str,"envcut")) {
         fprintf(stderr,
         "USAGE:\n"
-        "envcut envcut 1 infile generic_outfilename attack envlen exp [-climit]\n"
+        "envcut envcut 1 infile generic_outfilename envlen attack exp [-climit]\n"
         "OR:\n"
-        "envcut envcut 2 infile generic_outfilename attack envlen step exp [-climit]\n"
+        "envcut envcut 2 infile generic_outfilename envlen step attack exp [-climit]\n"
         "\n"
         "Cut sound into elements with falling envelope.\n"
         "\n"
