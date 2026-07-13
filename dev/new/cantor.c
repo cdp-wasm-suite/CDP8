@@ -1207,8 +1207,8 @@ int usage2(char *str)
     if(!strcmp(str,"set")) {
         fprintf(stdout,
         "USAGE:\n"
-        "cantor set infile outfile 1-2 holesize holedig depth-trig splicelen maxdur [-e]\n"
-        "cantor set infile outfile 3   holelev  holedig layercnt layerdec maxdur\n"
+        "cantor set 1-2 infile outfile holesize holedig depth-trig splicelen maxdur [-e]\n"
+        "cantor set 3 infile outfile holelev  holedig layercnt layerdec maxdur\n"
         "\n"
         "Gradually cut hole in central 3rd of input sound.\n"
         "Cut holes in central 3rd of the remaining segments, and so on.\n"
