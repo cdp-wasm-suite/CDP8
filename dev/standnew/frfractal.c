@@ -1135,12 +1135,12 @@ int generate_fractal_pattern(dataptr dz)
     for(n = 0, m = starttail;n < tailsize; n++,m++)         //  Copy tail into buffer
         tailbuf[n] = ibuf[m];
     for(m = 0; m < splicelen; m++) {                        //  Put upsplice on tail
-        j = m * 2;
+        j = m * chans;                                      //  Frame m starts at sample m*chans (was hardcoded *2, wrong for non-stereo)
         for(c = 0; c < chans; c++) {
             tailbuf[j] = (float)(tailbuf[j] * splicebuf[m]);
             j++;
         }
-        if(j == tailsize)                                   //  Break, if tail is shorter than full splice
+        if(j >= tailsize)                                   //  Break, if tail is shorter than full splice
             break;
     }
 
@@ -1248,7 +1248,7 @@ int generate_fractal_pattern(dataptr dz)
                     z--;
                 }
             } else {
-                j = m*2;                                            //  Otherwise : do start and end splices simultaneously
+                j = m*chans;                                        //  Otherwise : do start and end splices simultaneously (frame m at m*chans; was hardcoded *2)
                 for(c = 0; c < chans; c++) {
                     buf[n][j] = (float)(buf[n][j] * splicebuf[m]);
                     j++;
