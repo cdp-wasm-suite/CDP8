@@ -8460,8 +8460,8 @@ int formants_recolor(int inner_lpcnt,double *phase,int *up,int arp_param,double 
 
             //  Put a reasonable freq on channels which have not received new data (HEREH : should these remain amp zero ??)
 
-            for(cc=0,vc=2;cc <dz->clength;cc++,vc+=2) {
-                if(dz->windowbuf[0][FREQ] == 0.0)                           
+            for(cc=0,vc=0;cc <dz->clength;cc++,vc+=2) {     //  vc from 0 (was 2): starting at 2 while looping clength times ran one channel past windowbuf[0]
+                if(dz->windowbuf[0][FREQ] == 0.0)
                     dz->windowbuf[0][FREQ] = (float)(cc * dz->chwidth);
             }
 
@@ -8474,7 +8474,7 @@ int formants_recolor(int inner_lpcnt,double *phase,int *up,int arp_param,double 
 
                 //  Impose the ORIGINAL spectral envelope on the new data
 
-                for(cc=0,vc=2;cc <dz->clength;cc++,vc+=2) {
+                for(cc=0,vc=0;cc <dz->clength;cc++,vc+=2) {     //  vc from 0 (was 2): windowbuf[0] holds clength channels; vc=2 ran one channel past the end
                     frq = dz->windowbuf[0][FREQ];                               //  At new-spectrum channel-frq
                     if((exit_status = getspecenvamp(&newspecamp,frq,1,dz))<0)   //  Get amplitude on spectral envelope of new-spectrum, at this freq
                         return(exit_status);
