@@ -215,8 +215,8 @@ int main(int argc,char *argv[])
     is_launched = TRUE;
 
     //allocate_large_buffers() ... replaced by
-    dz->extra_bufcnt =  0; 
-    dz->bptrcnt = 3;
+    dz->extra_bufcnt =  0;
+    dz->bptrcnt = 4;    //  SE_IBUF1, SE_IBUF2, SE_OBUF, SE_BUFEND — flbufptr must hold 4 pointers
     
     if((exit_status = establish_spec_bufptrs_and_extra_buffers(dz))<0) {
         print_messages_and_close_sndfiles(exit_status,is_launched,dz);
@@ -1319,7 +1319,7 @@ int do_specenv(dataptr dz)
             cnt = 1;                                            //  speccentrecnt counts 0 to n | |   |   |     centre frqs of bands + val at 0Hz
                                                                 //  specenv boundaries 0 to n-1 |___|___|___    bottom frqs of bands
             specfrq =   dz->spececentrfrq[cnt];                 //  specamp vals 0 to n-1         |   |   |     average amplitudes of bands
-            while(frq > specfrq) {
+            while(frq > specfrq && cnt < dz->specenvcnt) {      //  clamp at top band: without the bound, a frq above the highest band centre runs cnt off spececentrfrq/specenvamp
                 cnt++;                                          //  Search envelope bands until envband-frq is > input frq
                 specfrq = dz->spececentrfrq[cnt];
             }
