@@ -1396,7 +1396,16 @@ int check_spin_param_validity_and_consistency(dataptr dz)
             return exit_status;
     }                                                           //  Convert semitones to octaves
     dz->param[SPNDOPL] /= SEMITONES_PER_OCTAVE;                 //  NB at max speed, doplshift = speed*pshift_factor = dopl * maxspeed/maxspeed 
-    dz->pshift_factor = dz->param[SPNDOPL]/dz->param[SPNRATE];  //  at halfspeed,  doplshift = halfspeed*pshift_factor = dopl * halfspeed/maxspeed = halfshift
+                                                                //  A zero rotation rate is legal (the range is -100 to 100), but dividing
+                                                                //  by it makes pshift_factor NaN, and that NaN reaches the input read-
+                                                                //  pointers through incrl/incrr. Every "have we consumed the buffer?"
+                                                                //  test is a >= against those pointers, and NaN compares false, so no
+                                                                //  further input is ever read and the process loop never ends. At zero
+                                                                //  rate there is no motion, hence no doppler shift: the 0 supplied here.
+    if(dz->param[SPNRATE] == 0.0)
+        dz->pshift_factor = 0.0;
+    else
+        dz->pshift_factor = dz->param[SPNDOPL]/dz->param[SPNRATE];  //  at halfspeed,  doplshift = halfspeed*pshift_factor = dopl * halfspeed/maxspeed = halfshift
     return FINISHED;                                            //  at zerospeed,  doplshift = 0*pshift_factor = 0
 }
 
