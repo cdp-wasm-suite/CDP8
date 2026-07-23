@@ -38,7 +38,12 @@ jobs:
           - { os: ubuntu-24.04-arm, name: linux-arm64,    cmake_args: '' }
           # One macOS job builds both architectures into universal binaries —
           # no separate Intel and Apple Silicon jobs or downloads needed.
-          - { os: macos-latest,     name: macos-universal, cmake_args: '-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"' }
+          # The deployment target must be set explicitly: without it clang
+          # stamps the binaries with the runner's own OS version, so a release
+          # built on the current macos-latest image would only launch on that
+          # macOS or newer. 11.0 is the floor for a universal build, since the
+          # arm64 slice cannot target anything earlier than Big Sur.
+          - { os: macos-latest,     name: macos-universal, cmake_args: '-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0' }
     runs-on: ${{ matrix.os }}
 
     steps:

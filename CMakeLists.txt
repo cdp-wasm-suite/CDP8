@@ -162,16 +162,13 @@ if(APPLE)
     set(CS_FRAMEWORK_DEST "${CMAKE_INSTALL_PREFIX}")
   endif()
 
-  set(DEFAULT_OSX_SYSROOT /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk/)
-
-  if(NOT CMAKE_OSX_SYSROOT AND EXISTS ${DEFAULT_OSX_SYSROOT})
-    set(CMAKE_OSX_SYSROOT ${DEFAULT_OSX_SYSROOT})
-  endif()
-
-   if(EXISTS ${CMAKE_OSX_SYSROOT})
-    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9)
-  endif()
-
+  # No deployment target is forced here: a personal build should target the
+  # machine it builds on. Binaries meant for distribution must pass
+  # -DCMAKE_OSX_DEPLOYMENT_TARGET explicitly, otherwise clang stamps them with
+  # the build host's OS version and they refuse to launch on anything older —
+  # see .github/workflows/release.yml, which sets it for the universal build.
+  # (This replaces a block that pointed CMAKE_OSX_SYSROOT at a MacOSX10.9.sdk
+  # path no Xcode has shipped for years, so the 10.9 target never applied.)
 endif()
 
 set(CDPLIB "lib")
